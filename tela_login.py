@@ -1,24 +1,26 @@
 import PySimpleGUI as sg
 
-usuario = []
+usuarios = []
 def adicionar_logins_anteriores():
     try:
         with open('cadastros.txt', 'r') as arquivo:
             linhas = arquivo.readlines()
+
         for linha in linhas:
             campos = linha.strip().split('|')
             nome = campos[0]
             email = campos[1]
             senha = campos[2]
             novo_usuario = {"nome":nome, "email":email, "senha":senha}
-            usuario.append(novo_usuario)
+            usuarios.append(novo_usuario)
     except FileNotFoundError:
-        arquivo = 'cadastros'
+        arquivo = 'cadastros.txt'
         with open(arquivo, 'w') as arquivo:
             arquivo.write("")
         pass
+    except IndexError:
+        pass
 adicionar_logins_anteriores()
-
 # Criar a tela de login
 def criar_tela_login():
     sg.theme("DarkGrey11")
@@ -68,21 +70,36 @@ def monitorar_eventos(window):
             nome = values["nome"]
             email = values["email"]
             senha = values["senha"]
+
             if nome and email and senha: 
-                window.close()
-                cadastrar_acesso(nome,email,senha)
+                erro = cadastrar_acesso(nome,email,senha)
+                if erro:
+                    cadastrar_dados_invalidos(erro)
+                else:
+                    window.close()
+                    tela_cadastro_realizado()
+
             else:
-                cadastrar_dados_invalidos()
+                erro = 'Preencha todos os campos corretamente'
+                cadastrar_dados_invalidos(erro)
             
 
-# Adiciona emails e senhas do txt na lista usuários
+# Adiciona emails e senhas do txt na lista usuários       
+
 def cadastrar_acesso(nome,email,senha):
+    for usuario in usuarios:
+        if usuario['email'] == email:
+            erro = 'Esse email já esta sendo utilizado'
+            return erro
+    
+
     with open('cadastros.txt', 'a') as arquivo:
         dados = nome+"|"+email+"|"+senha+"\n"
-        arquivo.write(dados)            
+        arquivo.write(dados)    
+    arquivo.close()    
     novo_usuario = {"nome":nome, "email":email, "senha":senha}
-    usuario.append(novo_usuario)
-    criar_tela_login()
+    usuarios.append(novo_usuario)
+    return False
 
 # Cria a tela de cadastrar conta
 def tela_cadastrar():
@@ -99,9 +116,9 @@ def tela_cadastrar():
 # Valida o login
 def validar_login(email,senha,window):
     credenciais = False
-    for usuarios in usuario:
-        if usuarios["email"] == email and usuarios["senha"] == senha:
-            nome = usuarios["nome"]
+    for usuario in usuarios:
+        if usuario["email"] == email and usuario["senha"] == senha:
+            nome = usuario["nome"]
             credenciais = True
     if credenciais:
         window.close()
@@ -143,9 +160,9 @@ def credencial_invalida():
             window_credencial_invalida.close()
             break
 
-def cadastrar_dados_invalidos():
+def cadastrar_dados_invalidos(erro):
     layout = [
-        [sg.Text("Todos os campos abaixo precisam estar preenchidos corretamente", size=(30,2),  justification='center')],
+        [sg.Text(f"{erro}", size=(30,2),  justification='center')],
         [sg.Button("OK", key="ok_cadastrar")]
     ]
     window_cadastrar_invalido = sg.Window("Atenção", layout)
@@ -154,5 +171,20 @@ def cadastrar_dados_invalidos():
         if event_cadastrar == sg.WIN_CLOSED or event_cadastrar == "ok_cadastrar":
             window_cadastrar_invalido.close()
             break
+
+def tela_cadastro_realizado():
+    layout = [
+        [sg.Text("Cadastro Realizado com sucesso", size=(45,2), justification='center')],
+        [sg.Button("ok", key="ok_cadastro")]
+    ]
+    window_cadastro_realizado = sg.Window("Cadastro Realizado", layout)
+ 
+    while True:
+        event_cadastro, values_cadastro = window_cadastro_realizado.read()
+        if event_cadastro == sg.WIN_CLOSED or event_cadastro == "ok_cadastro":
+            window_cadastro_realizado.close()
+            criar_tela_login()
+            break
+    
 
 criar_tela_login()
